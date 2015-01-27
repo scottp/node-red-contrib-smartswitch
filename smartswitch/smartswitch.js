@@ -72,8 +72,10 @@ module.exports = function(RED) {
 				stateSwitch = !stateSwitch;
 			else if (msg.topic == 'state')
 				stateSwitch = parseInt(msg.payload) > 0;
-			else if (msg.topic == 'set')
+			else if (msg.topic == 'set') {
 				stateTimer = parseInt(msg.payload) > 0;
+				doState();
+			}
 			else if (msg.topic == 'reset') 
 				doTimer();
 			else if (msg.topic == 'timeout') 
