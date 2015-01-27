@@ -1,5 +1,5 @@
 {
-    "name"         : "node-red-node-smartswitch",
+    "name"         : "node-red-contrib-smartswitch",
     "version"      : "0.0.1",
     "description"  : "A smartswitch node for node-red",
     "dependencies": {
