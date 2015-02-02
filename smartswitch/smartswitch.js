@@ -14,6 +14,9 @@
   limitations under the License.
 
 */
+String.prototype.endsWith = function(suffix) {
+    return this.match(suffix+"$") == suffix;
+};
 
 module.exports = function(RED) {
 	function SmartSwitchNode(config) {
@@ -73,6 +76,18 @@ module.exports = function(RED) {
 				stateSwitch = !stateSwitch;
 			else if (msg.topic == 'state')
 				stateSwitch = parseInt(msg.payload) > 0;
+			else if (msg.topic.endsWith("/ON"))
+				stateSwitch = true;
+			else if (msg.topic.endsWith("/OFF"))
+				stateSwitch = false;
+			else if (msg.topic.endsWith("/SWAP"))
+				stateSwitch = !stateSwitch;
+			else if (msg.topic.endsWith("/DISABLE"))
+				stateTimer = false;
+			else if (msg.topic.endsWith("/ENABLE"))
+				stateTimer = true;
+			else if (msg.topic.endsWith("/RESET"))
+				doTimer();
 			else if (msg.topic == 'set') {
 				stateTimer = parseInt(msg.payload) > 0;
 				doState();
@@ -80,6 +95,7 @@ module.exports = function(RED) {
 			else if (msg.topic == 'reset') 
 				doTimer();
 			else if (msg.topic == 'timeout') 
+				// XXX I think I have reversed set and timeout - see docs
 				if (stateSwitch && stateTimer)
 					doTimer(parseInt(msg.payload) * 1000);
 
