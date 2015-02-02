@@ -16,16 +16,16 @@
 */
 
 module.exports = function(RED) {
-    function SmartSwitchNode(config) {
-        RED.nodes.createNode(this,config);
-        var node = this;
+	function SmartSwitchNode(config) {
+		RED.nodes.createNode(this,config);
+		var node = this;
 		node.timeout = config.timeout * 1000;
 
 		var stateSwitch = false;	// current state
 		var stateTimer = true;	// Enforce or Ignore timer
 		var tout;				// Timer control
 
-        this.on('input', function(msg) {
+		this.on('input', function(msg) {
 			console.log(msg);
 			var old = stateSwitch;	// Check change?
 
@@ -42,10 +42,11 @@ module.exports = function(RED) {
 						node.status({fill:"red",shape:"ring",text:"off (timer off)"});
 			};
 
-			var doOff = function() {
+			var doOff = function(autoOff) {
 				stateSwitch = false;
 				tout = null;
 				doState();
+				msg.autooff = autoOff ? 1 : 0;	// Useful autoOff
 				msg.topic = config.topic;
 				msg.payload = 0;
 				node.send(msg);
@@ -62,7 +63,7 @@ module.exports = function(RED) {
 				if (tout) clearTimeout(tout);
 				if ( (overload || node.timeout) && stateTimer) {
 					tout = setTimeout(function() {
-						doOff();
+						doOff(true);
 					},overload ? overload : node.timeout);
 				}
 			};
@@ -90,12 +91,12 @@ module.exports = function(RED) {
 				}
 				else {
 					if (tout) clearTimeout(tout);
-					doOff();
+					doOff(false);
 				}
 			}
 
-        });
+		});
 
-    }
-    RED.nodes.registerType("smartswitch",SmartSwitchNode);
+	}
+	RED.nodes.registerType("smartswitch",SmartSwitchNode);
 }
