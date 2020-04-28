@@ -131,9 +131,10 @@ module.exports = function(RED) {
 				doState();
 			}
 
-			else if (msg.topic == 'timeout') 
+			else if (msg.topic == 'timeout') {
 				if (stateSwitch && stateTimer)
 					doTimer(msg.payload.timeout);
+			}
 
 			else if (msg.topic == 'reset' || msg.topic.endsWith("/RESET")) {
 				stateTimer = true;
