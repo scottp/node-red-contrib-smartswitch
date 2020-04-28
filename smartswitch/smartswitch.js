@@ -78,21 +78,32 @@ module.exports = function(RED) {
 				node.send(msg);
 			};
 
-			var doTimer = function(overload) {
+			var doTimer = function(override) {
 				if (tout) clearTimeout(tout);
 
-				let timeout = (overload ? parseInt(overload) : config.timeout) * 1000;
+				// If the specified timeout is 0 then no timeout
+				// otherwise if it is specified enable the timer
+				if (override === 0) {
+					stateTimer = 0;
+					doState();
+				} else if (override) {
+					stateTimer = 1;
+					doState();
+				}
+
+				let timeout = (override ? parseInt(override) : config.timeout) * 1000;
 
 				if (timeout && stateTimer) {
 					finishTime = Date.now() + timeout;
 					tout = setTimeout(function() {
-						doOff(true);
+						if (stateTimer)
+							doOff(true);
 					}, timeout);
 				}
 			};
 
 			var getTimeLeft = function () {
-				return Math.ceil((finishTime - Date.now()) / 1000);
+				return finishTime ? Math.ceil((finishTime - Date.now()) / 1000) : 0;
 			}
 
 			// Used to ensure the state is in sync with the actual device 
@@ -120,20 +131,24 @@ module.exports = function(RED) {
 				doState();
 			}
 
-			else if (msg.topic == 'reset' || msg.topic.endsWith("/RESET")) {
-				// Reset can also turn on if off 
-				if ( !stateSwitch && msg.payload && parseInt(msg.payload) != 0) {
-					stateSwitch = true;
-					doOn(msg.payload.onMsg);
-				}
+			else if (msg.topic == 'timeout') 
+				if (stateSwitch && stateTimer)
+					doTimer(msg.payload.timeout);
 
-				// Only reset if timeout was overriden with longer time
-				if ( getTimeLeft() < config.timeout)
+			else if (msg.topic == 'reset' || msg.topic.endsWith("/RESET")) {
+				stateTimer = true;
+				doState();
+				
+				// Only reset if remaining timeout was overriden with longer time
+				if ( getTimeLeft() < config.timeout) {
 					doTimer();
+				}
 			}
 
 			else {
-				// These commands all cause an on or off msg to be sent
+				let oldStateSwitch = stateSwitch;  
+
+				// These commands can cause an on or off msg to be sent
 				if (msg.topic == 'toggle')
 					stateSwitch = !stateSwitch;
 				else if (msg.topic == 'state')
@@ -145,18 +160,15 @@ module.exports = function(RED) {
 				else if (msg.topic.endsWith("/SWAP")) 
 					stateSwitch = !stateSwitch;
 				
-				// Nothing needs to be done for a timeout as the timer will always be reset
-				// else if (msg.topic == 'timeout') 
-				//  	if (stateSwitch && stateTimer)
-				//  		doTimer(msg.payload.timeout);
-
 				// Always send an On or Off as there may be a change in onMsg
 				// and it shouldn't cause a problem if it is the same
 				if (stateSwitch) {
-					doTimer(msg.payload.timeout);
-					doOn(msg.payload.onMsg);
+					if (!oldStateSwitch || msg.payload.override) {
+						doTimer(msg.payload.timeout);
+						doOn(msg.payload.onMsg);
+					}
 				}
-				else {
+				else if (oldStateSwitch){
 					if (tout) clearTimeout(tout);
 					doOff(false);
 				}
