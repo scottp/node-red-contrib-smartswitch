@@ -161,8 +161,8 @@ module.exports = function(RED) {
 				else if (msg.topic.endsWith("/SWAP")) 
 					stateSwitch = !stateSwitch;
 				
-				// Always send an On or Off as there may be a change in onMsg
-				// and it shouldn't cause a problem if it is the same
+				// Send an On msg if currently Off or this is an override
+				// Send an Off if currently On
 				if (stateSwitch) {
 					if (!oldStateSwitch || msg.payload.override) {
 						doTimer(msg.payload.timeout);
