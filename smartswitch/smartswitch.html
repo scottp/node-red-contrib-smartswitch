@@ -29,6 +29,11 @@
     </div>
 
     <div class="form-row">
+        <label for="node-input-offmsg"><i class="fa fa-envelope"></i> Off Msg</label>
+        <input type="text" id="node-input-offMsg" placeholder="{'topic': 'switch', 'payload':{'value':0}}">
+    </div>
+
+    <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
@@ -44,8 +49,9 @@
 		<li>topic "toggle" = toggle current state</li>
 		<li>topic "state" = payload is 1 ON or 0 OFF</li>
 		<li>topic "reset" = reset the timer if on</li>
-		<li>topic "set" = set timeout to new number if turned on</li>
-		<li>topic "timeout" = payload is 1 Enable, 0 Disable timeout function</li>
+		<li>topic "set" = payload is 1 Enable, 0 Disable timeout function</li>
+        <li>topic "timeout" =  set timeout to new number if turned on</li>
+        <li>topic "sync" = set the sate without sending a message<li>
 	</ul>
 </script>
 
@@ -57,7 +63,8 @@
         defaults: {             // defines the editable properties of the node
             name: {value:""},   //  along with default values.
             topic: {value:"", required:true},
-			timeout: {value:"0"}
+            timeout: {value:"0"},
+            offMsg: {value: "", validate: RED.validators.typedInput('offMsgType')}
         },
         inputs:1,	// INPUT - Various inputs using payloads
         outputs:1,  // OUPTUT - Payload, ON only payload, OFF only payload
@@ -68,6 +75,12 @@
         },
         labelStyle: function() { // TODO
             return this.name?"node_label_italic":"";
+        },
+        oneditprepare: function() {
+            $('#node-input-offMsg').typedInput({
+                default: 'json',
+                types: ['json']
+            });
         }
     });
 </script>

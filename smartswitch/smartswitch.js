@@ -14,6 +14,9 @@
   limitations under the License.
 
 */
+
+'use strict';
+
 String.prototype.endsWith = function(suffix) {
     return this.match(suffix+"$") == suffix;
 };
@@ -22,15 +25,14 @@ module.exports = function(RED) {
 	function SmartSwitchNode(config) {
 		RED.nodes.createNode(this,config);
 		var node = this;
-		node.timeout = config.timeout * 1000;
-
+		
 		var stateSwitch = false;	// current state
 		var stateTimer = true;	// Enforce or Ignore timer
 		var tout;				// Timer control
+		var finishTime;			// Time when the timer was started
 
 		this.on('input', function(msg) {
 			console.log(msg);
-			var old = stateSwitch;	// Check change?
 
 			var doState = function() {
 				if (stateTimer)
@@ -49,70 +51,130 @@ module.exports = function(RED) {
 				stateSwitch = false;
 				tout = null;
 				doState();
-				msg.autooff = autoOff ? 1 : 0;	// Useful autoOff
-				msg.topic = config.topic;
-				msg.payload = 0;
+
+				let msg = {};
+				if (config.offMsg) {
+					msg = RED.util.evaluateNodeProperty(config.offMsg, 'json', node);;
+				}
+				else {
+					msg.autooff = autoOff ? 1 : 0;	// Useful autoOff
+					msg.topic = config.topic;
+					msg.payload = 0;
+				}
 				node.send(msg);
 			};
 
-			var doOn = function() {
+			var doOn = function(onMsg) {
 				doState();
-				msg.topic = config.topic;
-				msg.payload = 1;
+				
+				let msg = {};
+				if (onMsg) {
+					msg = onMsg;
+				}
+				else {
+					msg.topic = config.topic;
+					msg.payload = 1;
+				}
 				node.send(msg);
 			};
 
-			var doTimer = function(overload) {
+			var doTimer = function(override) {
 				if (tout) clearTimeout(tout);
-				if ( (overload || node.timeout) && stateTimer) {
+
+				// If the specified timeout is 0 then no timeout
+				// otherwise if it is specified enable the timer
+				if (override === 0) {
+					stateTimer = 0;
+					doState();
+				} else if (override) {
+					stateTimer = 1;
+					doState();
+				}
+
+				let timeout = (override ? parseInt(override) : config.timeout) * 1000;
+
+				if (timeout && stateTimer) {
+					finishTime = Date.now() + timeout;
 					tout = setTimeout(function() {
-						doOff(true);
-					},overload ? overload : node.timeout);
+						if (stateTimer)
+							doOff(true);
+					}, timeout);
 				}
 			};
 
-			// Inputs
-			if (msg.topic == 'toggle')
-				stateSwitch = !stateSwitch;
-			else if (msg.topic == 'state')
+			var getTimeLeft = function () {
+				return finishTime ? Math.ceil((finishTime - Date.now()) / 1000) : 0;
+			}
+
+			// Used to ensure the state is in sync with the actual device 
+			if (msg.topic == 'sync') {
+				let oldStateSwitch = stateSwitch; 
 				stateSwitch = parseInt(msg.payload) > 0;
-			else if (msg.topic.endsWith("/ON"))
-				stateSwitch = true;
-			else if (msg.topic.endsWith("/OFF"))
-				stateSwitch = false;
-			else if (msg.topic.endsWith("/SWAP"))
-				stateSwitch = !stateSwitch;
-			else if (msg.topic.endsWith("/DISABLE"))
-				stateTimer = false;
-			else if (msg.topic.endsWith("/ENABLE"))
-				stateTimer = true;
-			else if (msg.topic.endsWith("/RESET"))
-				doTimer();
+				doState();
+
+				// If the actual device has been turned on start the timer with the default timeout
+				if (stateSwitch && !oldStateSwitch)
+					doTimer();
+			}
+
+			// Just enables and disables the timer but doesn't reset it or cancel it	
 			else if (msg.topic == 'set') {
 				stateTimer = parseInt(msg.payload) > 0;
 				doState();
 			}
-			else if (msg.topic == 'reset') 
-				doTimer();
-			else if (msg.topic == 'timeout') 
-				// XXX I think I have reversed set and timeout - see docs
-				if (stateSwitch && stateTimer)
-					doTimer(parseInt(msg.payload) * 1000);
+			else if (msg.topic.endsWith("/DISABLE")) {
+				stateTimer = false;
+				doState();
+			}
+			else if (msg.topic.endsWith("/ENABLE")) {
+				stateTimer = true;
+				doState();
+			}
 
-			// Outputs? (only if changed?)
-			if (old != stateSwitch) {
-				if (stateSwitch) {
+			else if (msg.topic == 'timeout') {
+				if (stateSwitch && stateTimer)
+					doTimer(msg.payload.timeout);
+			}
+
+			else if (msg.topic == 'reset' || msg.topic.endsWith("/RESET")) {
+				stateTimer = true;
+				doState();
+				
+				// Only reset if remaining timeout was overriden with longer time
+				if ( getTimeLeft() < config.timeout) {
 					doTimer();
-					doOn();
 				}
-				else {
+			}
+
+			else {
+				let oldStateSwitch = stateSwitch;  
+
+				// These commands can cause an on or off msg to be sent
+				if (msg.topic == 'toggle')
+					stateSwitch = !stateSwitch;
+				else if (msg.topic == 'state')
+					stateSwitch = parseInt(msg.payload) != 0;
+				else if (msg.topic.endsWith("/ON"))	
+					stateSwitch = true;
+				else if (msg.topic.endsWith("/OFF")) 
+					stateSwitch = false;
+				else if (msg.topic.endsWith("/SWAP")) 
+					stateSwitch = !stateSwitch;
+				
+				// Send an On msg if currently Off or this is an override
+				// Send an Off if currently On
+				if (stateSwitch) {
+					if (!oldStateSwitch || msg.payload.override) {
+						doTimer(msg.payload.timeout);
+						doOn(msg.payload.onMsg);
+					}
+				}
+				else if (oldStateSwitch){
 					if (tout) clearTimeout(tout);
 					doOff(false);
 				}
 			}
-
 		});
-
 	}
 	RED.nodes.registerType("smartswitch",SmartSwitchNode);
 }
