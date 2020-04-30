@@ -16,4 +16,4 @@ See JSON file??
 3. An Off message can be set in the Properties which will be output instead of the usual Off message.
 4. Turning off the timer using `set` doesn't stop the timer from running it just prevents the Off msg from being set
 5. Re-enabling the timer using `set` or `reset` allows the Off msg to be sent when the timer expires
-6. `reset` ony resets the timer to the value set in Properties if the timer currently left on the timer is less
+6. `reset` ony resets the timer to the value set in Properties if the time currently left on the timer is less
