@@ -112,7 +112,7 @@ module.exports = function(RED) {
 
 			// Used to ensure the state is in sync with the actual device 
 			if (msg.topic == 'sync') {
-				node.debug(`sync called with payload:${msg/payload}`);
+				node.debug(`sync called with payload:${msg.payload}`);
 				let oldStateSwitch = stateSwitch; 
 				stateSwitch = parseInt(msg.payload) > 0;
 				doState();
