@@ -32,7 +32,7 @@ module.exports = function(RED) {
 		var finishTime;			// Time when the timer was started
 
 		this.on('input', function(msg) {
-			console.log(msg);
+			node.debug(`input event with ${JSON.stringify(msg)}`);
 
 			var doState = function() {
 				if (stateTimer)
@@ -48,6 +48,7 @@ module.exports = function(RED) {
 			};
 
 			var doOff = function(autoOff) {
+				node.debug(`doOff with autoOff:${autoOff}`);
 				stateSwitch = false;
 				tout = null;
 				doState();
@@ -65,6 +66,7 @@ module.exports = function(RED) {
 			};
 
 			var doOn = function(onMsg) {
+				node.debug(`doOn with onMsg:${JSON.stringify(onMsg)}`);
 				doState();
 				
 				let msg = {};
@@ -79,6 +81,7 @@ module.exports = function(RED) {
 			};
 
 			var doTimer = function(override) {
+				node.debug(`doTimer with override:${override}`);
 				if (tout) clearTimeout(tout);
 
 				// If the specified timeout is 0 then no timeout
@@ -99,6 +102,7 @@ module.exports = function(RED) {
 						if (stateTimer)
 							doOff(true);
 					}, timeout);
+					node.debug(`Timer set to ${timeout/1000} secs, finishtime:${(new Date(finishTime)).toLocaleString('en-GB', { timeZone: 'UTC' })}`);
 				}
 			};
 
@@ -108,13 +112,16 @@ module.exports = function(RED) {
 
 			// Used to ensure the state is in sync with the actual device 
 			if (msg.topic == 'sync') {
+				node.debug(`sync called with payload:${msg/payload}`);
 				let oldStateSwitch = stateSwitch; 
 				stateSwitch = parseInt(msg.payload) > 0;
 				doState();
 
 				// If the actual device has been turned on start the timer with the default timeout
-				if (stateSwitch && !oldStateSwitch)
+				if (stateSwitch && !oldStateSwitch) {
+					node.debug("sync set timer");
 					doTimer();
+				}
 			}
 
 			// Just enables and disables the timer but doesn't reset it or cancel it	
