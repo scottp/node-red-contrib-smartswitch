@@ -64,9 +64,7 @@ module.exports = function(RED) {
 					msg.payload = 0;
 				}
 
-				// Ignore sync messages for 2 seconds
-				ignoreSync = true;
-				setTimeout(function() {ignoreSync = false;}, 2000);
+				setIgnoreSync();
 				
 				node.send(msg);
 			};
@@ -84,12 +82,15 @@ module.exports = function(RED) {
 					msg.payload = 1;
 				}
 
-				// Ignore sync messages for 2 seconds
-				ignoreSync = true;
-				setTimeout(function() {ignoreSync = false;}, 2000);
+				setIgnoreSync();
 
 				node.send(msg);
 			};
+
+			var setIgnoreSync = function() {
+				ignoreSync = true;
+				setTimeout(function() {ignoreSync = false;}, 4000);
+			}
 
 			var doTimer = function(override) {
 				node.debug(`doTimer with override:${override}`);
