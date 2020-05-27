@@ -30,6 +30,7 @@ module.exports = function(RED) {
 		var stateTimer = true;	// Enforce or Ignore timer
 		var tout;				// Timer control
 		var finishTime;			// Time when the timer was started
+		var ignoreSync = false; // Whether to ignore sync messages for a brief time
 
 		this.on('input', function(msg) {
 			node.debug(`input event with ${JSON.stringify(msg)}`);
@@ -62,6 +63,11 @@ module.exports = function(RED) {
 					msg.topic = config.topic;
 					msg.payload = 0;
 				}
+
+				// Ignore sync messages for 2 seconds
+				ignoreSync = true;
+				setTimeout(function() {ignoreSync = false;}, 2000);
+				
 				node.send(msg);
 			};
 
@@ -77,6 +83,11 @@ module.exports = function(RED) {
 					msg.topic = config.topic;
 					msg.payload = 1;
 				}
+
+				// Ignore sync messages for 2 seconds
+				ignoreSync = true;
+				setTimeout(function() {ignoreSync = false;}, 2000);
+
 				node.send(msg);
 			};
 
@@ -113,6 +124,12 @@ module.exports = function(RED) {
 			// Used to ensure the state is in sync with the actual device 
 			if (msg.topic == 'sync') {
 				node.debug(`sync called with payload:${msg.payload}`);
+
+				if (ignoreSync) {
+					node.debug(`sync ignored`);
+					return;
+				}
+
 				let oldStateSwitch = stateSwitch; 
 				stateSwitch = parseInt(msg.payload) > 0;
 				doState();
