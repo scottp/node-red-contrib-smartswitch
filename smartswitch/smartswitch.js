@@ -132,7 +132,7 @@ module.exports = function(RED) {
 				}
 
 				let oldStateSwitch = stateSwitch; 
-				stateSwitch = parseInt(msg.payload) > 0;
+				stateSwitch = parseInt(msg.payload.state) > 0;
 				doState();
 
 				// If the actual device has been turned on start the timer with the timeout passed
