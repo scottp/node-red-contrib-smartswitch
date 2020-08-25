@@ -135,10 +135,11 @@ module.exports = function(RED) {
 				stateSwitch = parseInt(msg.payload) > 0;
 				doState();
 
-				// If the actual device has been turned on start the timer with the default timeout
+				// If the actual device has been turned on start the timer with the timeout passed
+				// or the default 
 				if (stateSwitch && !oldStateSwitch) {
 					node.debug("sync set timer");
-					doTimer();
+					doTimer(msg.payload.timeout);
 				}
 			}
 
